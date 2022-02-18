@@ -46,6 +46,9 @@ export class Video extends React.Component<Props, State> {
           repeat={true}
           paused={!this.state.playingVideo}
           muted={true}
+          ignoreSilentSwitch="obey"
+          // @ts-ignore
+          mixWithOthers="mix"
         />
         <Kb.Box
           style={Styles.collapseStyles([

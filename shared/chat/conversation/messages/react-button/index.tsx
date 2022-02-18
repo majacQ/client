@@ -1,7 +1,7 @@
 import * as React from 'react'
-import * as Types from '../../../../constants/types/chat2'
+import type * as Types from '../../../../constants/types/chat2'
 import {Box2, ClickableBox, Icon, Text, EmojiIfExists} from '../../../../common-adapters'
-import {Props as ClickableBoxProps} from '../../../../common-adapters/clickable-box'
+import type {Props as ClickableBoxProps} from '../../../../common-adapters/clickable-box'
 import * as Styles from '../../../../styles'
 import DelayInterval from './delay-interval'
 
@@ -56,13 +56,14 @@ const ButtonBox = Styles.styled(ClickableBox, {
 
 const standardEmojiPattern = /^:([^:])+:$/
 
-const ReactButton = (props: Props) => {
+const ReactButton = React.forwardRef<ClickableBox, Props>((props, ref) => {
   const text = props.decorated.length ? props.decorated : props.emoji
   const isStandardEmoji = !!props.emoji.match(standardEmojiPattern)
   return (
     <ButtonBox
       noEffect={false}
       border={false}
+      ref={ref}
       className={Styles.classNames(props.className, {noShadow: props.active})}
       onLongPress={props.onLongPress}
       onMouseLeave={props.onMouseLeave}
@@ -99,7 +100,7 @@ const ReactButton = (props: Props) => {
       </Box2>
     </ButtonBox>
   )
-}
+})
 
 const iconCycle = ['iconfont-reacji', 'iconfont-reacji', 'iconfont-reacji', 'iconfont-reacji'] as const
 export type NewReactionButtonProps = {
@@ -127,7 +128,7 @@ export class NewReactionButton extends React.Component<NewReactionButtonProps, N
 
   _setShowingPicker = (showingPicker: boolean) => {
     this.setState(s => (s.showingPicker === showingPicker ? null : {showingPicker}))
-    this.props.onShowPicker && this.props.onShowPicker(showingPicker)
+    this.props.onShowPicker?.(showingPicker)
   }
 
   _onAddReaction = ({colons}: {colons: string}) => {
@@ -172,7 +173,7 @@ export class NewReactionButton extends React.Component<NewReactionButtonProps, N
 
   componentWillUnmount() {
     this._stopCycle()
-    this.props.onShowPicker && this.props.onShowPicker(false)
+    this.props.onShowPicker?.(false)
   }
 
   render() {
@@ -216,7 +217,7 @@ export class NewReactionButton extends React.Component<NewReactionButtonProps, N
                   !Styles.isMobile && (this.props.showBorder ? {top: 4} : {top: 1}),
                   !this.state.applyClasses &&
                     (iconIndex === this.state.iconIndex
-                      ? {transform: 'translateX(-8px)'}
+                      ? ({transform: 'translateX(-8px)'} as any)
                       : {transform: 'translateX(22px)'}),
                 ])}
                 className={this._getClass(iconIndex)}

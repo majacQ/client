@@ -42,6 +42,7 @@ import Geolocation from '@react-native-community/geolocation'
 import {AudioRecorder} from 'react-native-audio'
 import * as Haptics from 'expo-haptics'
 import {_getNavigator} from '../../constants/router2'
+import type {RPCError} from 'util/errors'
 
 const requestPermissionsToWrite = async () => {
   if (isAndroid) {
@@ -138,7 +139,7 @@ export async function saveAttachmentToCameraRoll(filePath: string, mimeType: str
     PushNotifications.localNotification({
       message: `Failed to save ${saveType} to camera roll`,
     })
-    logger.debug(logPrefix + 'failed to save: ' + e)
+    logger.debug(`${logPrefix} failed to save: ${e}`)
     throw e
   } finally {
     try {
@@ -196,7 +197,7 @@ const openAppSettings = async () => {
     const settingsURL = 'app-settings:'
     const can = await Linking.canOpenURL(settingsURL)
     if (can) {
-      Linking.openURL(settingsURL)
+      return Linking.openURL(settingsURL)
     } else {
       logger.warn('Unable to open app settings')
     }
@@ -232,12 +233,12 @@ const updateChangedFocus = (action: ConfigGen.MobileAppStatePayload) => {
 let _lastPersist = ''
 function* persistRoute(_state: Container.TypedState, action: ConfigGen.PersistRoutePayload) {
   const path = action.payload.path
-  const mainOrModal = path && path[1] && path[1].routeName
+  const mainOrModal = path?.[1]?.routeName
 
   let param = {}
   let routeName = ''
   if (mainOrModal === 'Main') {
-    const tab = path && path[2] // real top is the root of the tab (aka chatRoot) and not the tab itself
+    const tab = path?.[2] // real top is the root of the tab (aka chatRoot) and not the tab itself
     if (!tab) return
     // top level tab?
     if (tab.routeName === 'tabs.chatTab') {
@@ -441,7 +442,8 @@ const editAvatar = async () => {
       : RouteTreeGen.createNavigateAppend({
           path: [{props: {image: result}, selected: 'profileEditAvatar'}],
         })
-  } catch (error) {
+  } catch (error_) {
+    const error = error_ as any
     return ConfigGen.createFilePickerError({error: new Error(error)})
   }
 }
@@ -565,9 +567,10 @@ const manageContactsCache = async (
     contacts = await Contacts.getContactsAsync({
       fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers, Contacts.Fields.Emails],
     })
-  } catch (e) {
-    logger.error(`error loading contacts: ${e.message}`)
-    return SettingsGen.createSetContactImportedCount({error: e.message})
+  } catch (error_) {
+    const error = error_ as RPCError
+    logger.error(`error loading contacts: ${error.message}`)
+    return SettingsGen.createSetContactImportedCount({error: error.message})
   }
   let defaultCountryCode: string = ''
   try {
@@ -577,8 +580,9 @@ const manageContactsCache = async (
       // iOS sim + android emu don't supply country codes, so use this one.
       defaultCountryCode = 'us'
     }
-  } catch (e) {
-    logger.warn(`Error loading default country code: ${e.message}`)
+  } catch (error_) {
+    const error = error_ as RPCError
+    logger.warn(`Error loading default country code: ${error.message}`)
   }
 
   const mapped = SettingsConstants.nativeContactsToContacts(contacts, defaultCountryCode)
@@ -599,9 +603,10 @@ const manageContactsCache = async (
     if (state.settings.contacts.waitingToShowJoinedModal && resolved) {
       actions.push(SettingsGen.createShowContactsJoinedModal({resolved}))
     }
-  } catch (e) {
-    logger.error('Error saving contacts list: ', e.message)
-    actions.push(SettingsGen.createSetContactImportedCount({error: e.message}))
+  } catch (error_) {
+    const error = error_ as RPCError
+    logger.error('Error saving contacts list: ', error.message)
+    actions.push(SettingsGen.createSetContactImportedCount({error: error.message}))
   }
   return actions
 }
@@ -678,11 +683,12 @@ const onChatWatchPosition = async (
   const response = action.payload.response
   try {
     await requestLocationPermission(action.payload.params.perm)
-  } catch (err) {
-    logger.info('failed to get location perms: ' + err)
+  } catch (error_) {
+    const error = error_ as RPCError
+    logger.info('failed to get location perms: ' + error)
     return setPermissionDeniedCommandStatus(
       Types.conversationIDToKey(action.payload.params.convID),
-      `Failed to access location. ${err.message}`
+      `Failed to access location. ${error.message}`
     )
   }
   const watchID = Geolocation.watchPosition(
@@ -797,6 +803,8 @@ const stopAudioRecording = async (
   if (ChatConstants.audioRecordingDuration(audio) < 500 || audio.path.length === 0) {
     logger.info('stopAudioRecording: recording too short, skipping')
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+      .then(() => {})
+      .catch(() => {})
     return Chat2Gen.createStopAudioRecording({conversationIDKey, stopType: Types.AudioStopType.CANCEL})
   }
 
@@ -814,11 +822,12 @@ const onAttemptAudioRecording = async (
   let chargeForward = true
   try {
     chargeForward = await requestAudioPermission()
-  } catch (err) {
-    logger.info('failed to get audio perms: ' + err)
+  } catch (error_) {
+    const error = error_ as RPCError
+    logger.info('failed to get audio perms: ' + error)
     return setPermissionDeniedCommandStatus(
       action.payload.conversationIDKey,
-      `Failed to access audio. ${err.message}`
+      `Failed to access audio. ${error.message}`
     )
   }
   if (!chargeForward) {
@@ -844,6 +853,8 @@ const onEnableAudioRecording = async (
 
   if (isIOS) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      .then(() => {})
+      .catch(() => {})
   } else {
     Vibration.vibrate(50)
   }
@@ -872,6 +883,8 @@ const onSendAudioRecording = (action: Chat2Gen.SendAudioRecordingPayload) => {
   if (!action.payload.fromStaged) {
     if (isIOS) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        .then(() => {})
+        .catch(() => {})
     } else {
       Vibration.vibrate(50)
     }

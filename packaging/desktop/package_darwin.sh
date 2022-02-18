@@ -47,7 +47,7 @@ icon_path="$client_dir/media/icons/Keybase.icns"
 saltpack_icon="$client_dir/media/icons/saltpack.icns"
 
 echo "Loading release tool"
-"$client_dir/packaging/goinstall.sh" "github.com/keybase/release"
+(cd "$client_dir/go/buildtools"; go install "github.com/keybase/release")
 release_bin="$GOPATH/bin/release"
 
 if [ "$keybase_version" = "" ]; then
@@ -93,7 +93,7 @@ shared_support_dir="$out_dir/Keybase.app/Contents/SharedSupport"
 resources_dir="$out_dir/Keybase.app/Contents/Resources/"
 
 # The KeybaseInstaller.app installs KBFuse, keybase.Helper, services and CLI via a native app
-installer_url="https://prerelease.keybase.io/darwin-package/KeybaseInstaller-1.1.89-darwin.tgz"
+installer_url="https://prerelease.keybase.io/darwin-package/KeybaseInstaller-1.1.90-darwin.tgz"
 # KeybaseUpdater.app is the native updater UI (prompt dialogs)
 updater_url="https://prerelease.keybase.io/darwin-package/KeybaseUpdater-1.0.7-darwin.tgz"
 
@@ -235,7 +235,7 @@ sign() {(
   codesign --verbose --force --deep --timestamp --options runtime --sign "$code_sign_identity" "$app_name.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libGLESv2.dylib"
   codesign --verbose --force --deep --timestamp --options runtime --sign "$code_sign_identity" "$app_name.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libswiftshader_libEGL.dylib"
   codesign --verbose --force --deep --timestamp --options runtime --sign "$code_sign_identity" "$app_name.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libswiftshader_libGLESv2.dylib"
-  codesign --verbose --force --deep --timestamp --options runtime --sign "$code_sign_identity" "$app_name.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/crashpad_handler"
+  codesign --verbose --force --deep --timestamp --options runtime --sign "$code_sign_identity" "$app_name.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libvk_swiftshader.dylib"
   codesign --verbose --force --deep --timestamp --options runtime --sign "$code_sign_identity" "$app_name.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt"
 
   codesign --verbose --force --deep --timestamp --options runtime --entitlements $client_dir/osx/Keybase.entitlements --sign "$code_sign_identity" "$app_name.app"

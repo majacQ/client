@@ -6,12 +6,12 @@ import * as TeamBuildingGen from './team-building-gen'
 import * as RouteTreeGen from './route-tree-gen'
 import * as Saga from '../util/saga'
 import * as RPCTypes from '../constants/types/rpc-gen'
-import {TypedState} from '../constants/reducer'
+import type {TypedState} from '../constants/reducer'
 import {validateEmailAddress} from '../util/email-address'
-import flags from '../util/feature-flags'
+import type {RPCError} from 'util/errors'
 
 const closeTeamBuilding = (_: TypedState, {payload: {namespace}}: NSAction) => {
-  if (namespace === 'teams' && flags.teamsRedesign) {
+  if (namespace === 'teams') {
     // add members wizard handles navigation
     return false
   }
@@ -19,7 +19,7 @@ const closeTeamBuilding = (_: TypedState, {payload: {namespace}}: NSAction) => {
   const routeNames = [...namespaceToRoute.values()]
   const routeName = modals[modals.length - 1]?.routeName
 
-  if (routeNames.indexOf(routeName) !== -1) {
+  if (routeNames.includes(routeName)) {
     return RouteTreeGen.createNavigateUp()
   }
   return false
@@ -51,8 +51,9 @@ const apiSearch = async (
       u && arr.push(u)
       return arr
     }, [])
-  } catch (err) {
-    logger.error(`Error in searching for ${query} on ${service}. ${err.message}`)
+  } catch (error_) {
+    const error = error_ as RPCError
+    logger.error(`Error in searching for ${query} on ${service}. ${error.message}`)
     return []
   }
 }
@@ -150,7 +151,7 @@ export function filterForNs<S, A, L, R>(
   fn: (s: S, a: A & NSAction, l: L) => R
 ) {
   return (s: S, a: A & NSAction, l: L) => {
-    if (a && a.payload && a.payload.namespace === namespace) {
+    if (a?.payload?.namespace === namespace) {
       return fn(s, a, l)
     }
     return undefined
@@ -168,21 +169,20 @@ const namespaceToRoute = new Map([
   ['wallets', 'walletTeamBuilder'],
 ])
 
-const maybeCancelTeamBuilding = (namespace: TeamBuildingTypes.AllowedNamespace) => (
-  action: RouteTreeGen.OnNavChangedPayload
-) => {
-  const {prev, next} = action.payload
+const maybeCancelTeamBuilding =
+  (namespace: TeamBuildingTypes.AllowedNamespace) => (action: RouteTreeGen.OnNavChangedPayload) => {
+    const {prev, next} = action.payload
 
-  const wasTeamBuilding = namespaceToRoute.get(namespace) === prev[prev.length - 1]?.routeName
-  if (wasTeamBuilding) {
-    // team building or modal on top of that still
-    const isTeamBuilding = next[prev.length - 1] === prev[prev.length - 1]
-    if (!isTeamBuilding) {
-      return TeamBuildingGen.createCancelTeamBuilding({namespace})
+    const wasTeamBuilding = namespaceToRoute.get(namespace) === prev[prev.length - 1]?.routeName
+    if (wasTeamBuilding) {
+      // team building or modal on top of that still
+      const isTeamBuilding = next[prev.length - 1] === prev[prev.length - 1]
+      if (!isTeamBuilding) {
+        return TeamBuildingGen.createCancelTeamBuilding({namespace})
+      }
     }
+    return false
   }
-  return false
-}
 
 export default function* commonSagas(namespace: TeamBuildingTypes.AllowedNamespace) {
   yield* Saga.chainAction2(TeamBuildingGen.resetStore, makeCustomResetStore)

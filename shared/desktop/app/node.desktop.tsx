@@ -34,9 +34,9 @@ Electron.app.commandLine.appendSwitch('disk-cache-size', '1')
 const installCrashReporter = () => {
   if (env.KEYBASE_CRASH_REPORT) {
     console.log(`Adding crash reporting (local). Crash files located in ${Electron.app.getPath('temp')}`)
+    Electron.app.setPath('crashDumps', cacheRoot)
     Electron.crashReporter.start({
       companyName: 'Keybase',
-      crashesDirectory: cacheRoot,
       productName: 'Keybase',
       submitURL: '',
       uploadToServer: false,
@@ -201,7 +201,10 @@ const getStartupProcessArgs = () => {
 const handleActivate = () => {
   mainWindow && mainWindow.show()
   const dock = Electron.app.dock
-  dock.show()
+  dock
+    .show()
+    .then(() => {})
+    .catch(() => {})
 }
 
 const handleQuitting = (event: Electron.Event) => {
@@ -288,7 +291,7 @@ const plumbEvents = () => {
     mainWindow?.webContents.send('KBdispatchAction', action)
   })
 
-  Electron.ipcMain.handle('KBkeybase', async (_event, action: Action) => {
+  Electron.ipcMain.handle('KBkeybase', (_event, action: Action) => {
     switch (action.type) {
       case 'showMainWindow':
         {
@@ -365,6 +368,7 @@ const plumbEvents = () => {
           show: false, // Start hidden and show when we actually get props
           titleBarStyle: 'customButtonsOnHover' as const,
           webPreferences: {
+            enableRemoteModule: true,
             nodeIntegration: true,
             nodeIntegrationInWorker: false,
             preload: resolveRoot('dist', `preload-main${__DEV__ ? '.dev' : ''}.bundle.js`),
@@ -383,7 +387,10 @@ const plumbEvents = () => {
           )
         }
 
-        remoteWindow.loadURL(remoteURL(action.payload.windowComponent, action.payload.windowParam))
+        remoteWindow
+          .loadURL(remoteURL(action.payload.windowComponent, action.payload.windowParam))
+          .then(() => {})
+          .catch(() => {})
 
         if (action.payload.windowComponent !== 'menubar') {
           menuHelper(remoteWindow)
